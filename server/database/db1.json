@@ -1,1 +1,1 @@
-{"tables":[{"name":"Cars","structure":[{"name":"Brand","type":"string"},{"name":"HP","type":"number"}],"indexes":[{"name":"HP","columns":["HP"]}]}]}
+{"tables":[{"name":"Cars","structure":[{"name":"Brand","type":"string"},{"name":"HP","type":"number"}],"indexes":[{"name":"HP","columns":["HP"]}],"keyValueStore":{"1":"1:Audi,140","2":"2:VW,200"}}]}

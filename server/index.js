@@ -5,6 +5,7 @@ const databaseController = require('./controllers/databaseController');
 const tableController = require('./controllers/tableController');
 const cors = require('cors');
 const indexController = require('./controllers/indexController');
+// const { default: TableColumnInput } = require('../client/igsbd_client/src/components/TableColumnInput');
 
 app.use(cors({
   origin: 'http://localhost:3000',
@@ -20,6 +21,9 @@ app.post('/table/create', tableController.createTable);
 app.post('/table/drop', tableController.dropTable);
 
 app.post('/index/create', indexController.createIndex);
+
+app.post('/data/insert',tableController.insertRecord);
+app.post('/data/delete',tableController.deleteRecord);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

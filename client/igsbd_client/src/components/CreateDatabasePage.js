@@ -5,6 +5,9 @@ import DropDatabaseForm from './DropDatabaseForm';
 import UseDatabase from './UseDatabase';
 import DropTableForm from './DropTableForm';
 import CreateIndexForm from './CreateIndexForm';
+import Insert from './Insert';
+import Delete from './Delete';
+import UseTable from './UseTable';
 
 function CreateDatabasePage() {
   return (
@@ -15,7 +18,10 @@ function CreateDatabasePage() {
       <DropDatabaseForm/>
       <CreateTableForm />
       <DropTableForm/>
+      <UseTable/>
       <CreateIndexForm/>
+      <Insert/>
+      <Delete/>
     </div>
   );
 }
