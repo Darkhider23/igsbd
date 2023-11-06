@@ -1,0 +1,1 @@
+{"tables":[{"name":"Cars","structure":[{"name":"Brand","type":"string"},{"name":"HP","type":"number"}],"indexes":[{"name":"HP","columns":["HP"]}]}]}
