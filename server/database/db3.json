@@ -1,0 +1,52 @@
+{
+  "tables": [
+    {
+      "name": "Cars",
+      "structure": [
+        {
+          "name": "Brand",
+          "type": "string",
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "targetTable": null,
+          "targetColumn": null
+        }
+      ],
+      "primaryKeys": ["Brand"],
+      "foreignKeys": [],
+      "keyValueStore": { "Brand": "Brand:Passat" }
+    },
+    {
+      "name": "CarExamples",
+      "structure": [
+        {
+          "name": "Audi",
+          "type": "string",
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "targetTable": "Cars",
+          "targetColumn": "Brand"
+        }
+      ],
+      "primaryKeys": [],
+      "foreignKeys": [
+        { "columnName": "Audi", "targetTable": "Cars", "targetColumn": "Brand" }
+      ]
+    },
+    {
+      "name": "Books",
+      "structure": [
+        {
+          "name": "Name",
+          "type": "string",
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "targetTable": null,
+          "targetColumn": null
+        }
+      ],
+      "primaryKeys": ["Name"],
+      "foreignKeys": []
+    }
+  ]
+}
