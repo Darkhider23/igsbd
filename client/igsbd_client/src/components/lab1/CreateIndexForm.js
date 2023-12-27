@@ -12,7 +12,7 @@ function CreateIndexForm() {
     if (tableName && indexName && columns) {
       try {
         console.log(dbName);
-        const response = await fetch('localhost:5000/index/create', {
+        const response = await fetch('http://localhost:5000/index/create', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

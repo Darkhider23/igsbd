@@ -9,7 +9,7 @@ const port = 3000; // Change the port if needed
 
 // Connect to MongoDB
 mongoose.connect(
-    "mongodb+srv://Farchi:Masterzabest20mongodb@mydatabase.enc6jmy.mongodb.net/?retryWrites=true&w=majority",
+  "mongodb+srv://Farchi:Masterzabest20@mydatabase.enc6jmy.mongodb.net/?retryWrites=true&w=majority",
   {
     useNewUrlParser: true,
     useUnifiedTopology: true,
@@ -29,8 +29,16 @@ db.on("error", (error) => {
   console.error("MongoDB connection error:", error.message);
   // Handle the error as needed (e.g., exit the application or perform other actions)
 });
-// Create mongoose model based on metadata
+const models = {}; // Store created models to avoid re-creating them
+
 const createModel = (databaseName, tableName) => {
+  const modelKey = `${databaseName}_${tableName}`;
+
+  // Check if the model already exists
+  if (models[modelKey]) {
+    return models[modelKey];
+  }
+
   const metadataPath = `./database/${databaseName}.json`;
   const metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8"));
   const tableMetadata = metadata.tables.find(
@@ -53,11 +61,11 @@ const createModel = (databaseName, tableName) => {
     };
   }
 
-  // Pass tableMetadata along with the model
-  return {
-    YourModel: mongoose.model(tableName, new mongoose.Schema(schema)),
-    tableMetadata,
-  };
+  // Create and store the model
+  const YourModel = mongoose.model(tableName, new mongoose.Schema(schema));
+  models[modelKey] = { YourModel, tableMetadata };
+
+  return models[modelKey];
 };
 
 app.use(bodyParser.json());
@@ -102,19 +110,15 @@ module.exports = {
   insertRecord: async (req, res) => {
     try {
       const { databaseName, tableName } = req.params;
-      console.log(databaseName, tableName);
       const { YourModel, tableMetadata } = createModel(databaseName, tableName);
 
       const record = req.body;
-      // Validate record based on metadata
-      validateRecord(record, YourModel, tableMetadata);
+      await validateRecord(record, YourModel, tableMetadata);
 
-      // Insert record into MongoDB
-      console.log(record);
       const result = await YourModel.create(record);
       res.json(result);
     } catch (error) {
-      console.error(error);
+      console.error("Error in insertRecord:", error);
       res.status(500).json({ error: "Internal Server Error" });
     }
   },
@@ -123,20 +127,19 @@ module.exports = {
   deleteRecord: async (req, res) => {
     try {
       const { databaseName, tableName, primaryKey } = req.params;
-      console.log(databaseName,tableName,primaryKey);
       const { YourModel, tableMetadata } = createModel(databaseName, tableName);
 
-      // Delete record from MongoDB
       const result = await YourModel.deleteOne({
         [tableMetadata.primaryKeys[0]]: primaryKey,
       });
       res.json(result);
     } catch (error) {
-      console.error(error);
+      console.error("Error in deleteRecord:", error);
       res.status(500).json({ error: "Internal Server Error" });
     }
   },
 
+  // Get Metadata API endpoint
   getMetadata: (req, res) => {
     try {
       const { databaseName } = req.params;
@@ -144,7 +147,7 @@ module.exports = {
       const metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8"));
       res.json(metadata);
     } catch (error) {
-      console.error(error);
+      console.error("Error in getMetadata:", error);
       res.status(500).json({ error: "Internal Server Error" });
     }
   },

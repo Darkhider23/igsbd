@@ -7,7 +7,7 @@ function DropDatabaseForm() {
 
     if (databaseName) {
       try {
-        const response = await fetch('http://192.168.1.130:5000/database/drop', {
+        const response = await fetch('http://localhost:5000/database/drop', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
