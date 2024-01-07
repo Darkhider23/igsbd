@@ -32,94 +32,71 @@ db.on("error", (error) => {
 const models = {}; // Store created models to avoid re-creating them
 
 const createModel = (databaseName, tableName) => {
-  const modelKey = `${databaseName}_${tableName}`;
+  const modelName = `${databaseName}_${tableName}`;
 
   // Check if the model already exists
-  if (models[modelKey]) {
-    return models[modelKey];
+  if (models[modelName]) {
+    return models[modelName];
   }
 
-  const metadataPath = `./database/${databaseName}.json`;
-  const metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8"));
-  const tableMetadata = metadata.tables.find(
-    (table) => table.name === tableName
-  );
-
-  const schema = {};
-  tableMetadata.structure.forEach((column) => {
-    schema[column.name] = { type: column.type, required: !column.isPrimaryKey };
-  });
-
-  // Include primary key field dynamically
-  if (tableMetadata.primaryKeys.length === 1) {
-    schema[tableMetadata.primaryKeys[0]] = {
-      type: tableMetadata.structure.find(
-        (col) => col.name === tableMetadata.primaryKeys[0]
-      ).type,
+  // Define the schema with 'id' and 'values' fields
+  const schema = {
+    id: {
+      type: Number,
       required: true,
       unique: true,
-    };
-  }
+    },
+    values: {
+      type: String,
+      required: true,
+    },
+  };
 
-  // Create and store the model
-  const YourModel = mongoose.model(tableName, new mongoose.Schema(schema));
-  models[modelKey] = { YourModel, tableMetadata };
+  // Create and store the Mongoose model using the defined schema
+  const model = {
+    YourModel: mongoose.model(modelName, new mongoose.Schema(schema)),
+  };
 
-  return models[modelKey];
+  models[modelName] = model; // Store the model in the models object
+  return model;
 };
 
 app.use(bodyParser.json());
-
-// Validation function
-const validateRecord = async (record, YourModel, tableMetadata) => {
-  // Validate each attribute based on the metadata
-  for (const [key, value] of Object.entries(record)) {
-    const columnMetadata = tableMetadata.structure.find(
-      (col) => col.name === key
-    );
-
-    if (!columnMetadata) {
-      throw new Error(
-        `Column ${key} not found in metadata for table ${tableMetadata.name}`
-      );
-    }
-
-    // Check if the type matches
-    if (typeof value !== columnMetadata.type.toLowerCase()) {
-      throw new Error(
-        `Invalid type for column ${key}. Expected ${columnMetadata.type.toLowerCase()}, got ${typeof value}`
-      );
-    }
-  }
-
-  // Check if primary key is unique
-  const existingRecord = await YourModel.findOne({
-    [tableMetadata.primaryKeys[0]]: record[tableMetadata.primaryKeys[0]],
-  });
-  if (existingRecord) {
-    throw new Error(
-      `Record with primary key ${
-        record[tableMetadata.primaryKeys[0]]
-      } already exists in table ${tableMetadata.name}`
-    );
-  }
-};
 
 module.exports = {
   // Insert API endpoint
   insertRecord: async (req, res) => {
     try {
       const { databaseName, tableName } = req.params;
-      const { YourModel, tableMetadata } = createModel(databaseName, tableName);
+      const { YourModel } = createModel(databaseName, tableName);
 
       const record = req.body;
-      await validateRecord(record, YourModel, tableMetadata);
 
-      const result = await YourModel.create(record);
+      // Extract the 'id' field from the record
+      const id = record.id;
+
+      // Remove the 'id' field from the record
+      delete record.id;
+
+      // Generate the concatenated string of values from the remaining fields
+      const values = Object.values(record).join(", ");
+
+      // Create a new record using the 'values' field for the concatenated string of values
+      const result = await YourModel.create({ id, values });
       res.json(result);
     } catch (error) {
-      console.error("Error in insertRecord:", error);
-      res.status(500).json({ error: "Internal Server Error" });
+      if (
+        error.code === 11000 &&
+        error.keyPattern &&
+        error.keyPattern.id === 1
+      ) {
+        // Duplicate key error for 'id'
+        console.error("Error in insertRecord:", "This id already exists");
+        res.status(400).json({ error: "This id already exists" });
+      } else {
+        console.error("Error in insertRecord:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
     }
   },
 
@@ -127,12 +104,17 @@ module.exports = {
   deleteRecord: async (req, res) => {
     try {
       const { databaseName, tableName, primaryKey } = req.params;
-      const { YourModel, tableMetadata } = createModel(databaseName, tableName);
+      const { YourModel } = createModel(databaseName, tableName);
+      console.log(req.params);
+      // Use primaryKeyToDelete instead of id
+      const result = await YourModel.deleteOne({ id: primaryKey });
 
-      const result = await YourModel.deleteOne({
-        [tableMetadata.primaryKeys[0]]: primaryKey,
-      });
-      res.json(result);
+      // Check if a record was deleted
+      if (result.deletedCount === 0) {
+        return res.status(404).json({ error: "Record not found" });
+      }
+
+      res.json({ message: "Record deleted successfully" });
     } catch (error) {
       console.error("Error in deleteRecord:", error);
       res.status(500).json({ error: "Internal Server Error" });

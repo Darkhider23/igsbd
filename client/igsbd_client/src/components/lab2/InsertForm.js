@@ -31,11 +31,12 @@ const InsertForm = ({ metadata, onInsert }) => {
         onInsert(response.data);
       }
     } catch (error) {
-      console.error(error);
+      alert(error.response.data.error);
     }
   };
 
   const handleDelete = async () => {
+    console.log(primaryKeyToDelete);
     try {
       const response = await axios.post(
         `http://localhost:5000/api/delete/${databaseName}/${tableName}/${primaryKeyToDelete}`
