@@ -8,7 +8,6 @@ const InsertForm = ({ metadata, onInsert }) => {
   const [primaryKeyToDelete, setPrimaryKeyToDelete] = useState("");
   const databaseName = sessionStorage.getItem("databaseName");
   const tableName = sessionStorage.getItem("tableName");
-
   const handleInputChange = (e, column) => {
     const { name, value } = e.target;
     const processedValue = column.type === "number" ? parseFloat(value) : value;
@@ -23,7 +22,7 @@ const InsertForm = ({ metadata, onInsert }) => {
   const handleInsert = async () => {
     try {
       const response = await axios.post(
-        `http://localhost:5000/api/insert/${databaseName}/${tableName}`,
+        `http://localhost:5000/insert/${databaseName}/${tableName}`,
         record
       );
       console.log(response.data);
@@ -39,7 +38,7 @@ const InsertForm = ({ metadata, onInsert }) => {
     console.log(primaryKeyToDelete);
     try {
       const response = await axios.post(
-        `http://localhost:5000/api/delete/${databaseName}/${tableName}/${primaryKeyToDelete}`
+        `http://localhost:5000/delete/${databaseName}/${tableName}/${primaryKeyToDelete}`
       );
       console.log(response.data);
     } catch (error) {
@@ -50,7 +49,7 @@ const InsertForm = ({ metadata, onInsert }) => {
   return (
     <div>
       {/* Input fields for insert */}
-      {metadata.tables[0].structure.map((column) => (
+      {metadata && metadata.structure.map((column) => (
         <div key={column.name}>
           <label>{column.name}:</label>
           <input

@@ -1,38 +1,30 @@
 const express = require("express");
-const app = express();
 const bodyParser = require("body-parser");
+const cors = require("cors");
+const connectToDatabase = require("./connection");
 const databaseController = require("./controllers/databaseController");
 const tableController = require("./controllers/tableController");
-const cors = require("cors");
 const indexController = require("./controllers/indexController");
-const {
-  insertRecord,
-  deleteRecord,
-  getMetadata,
-} = require("./controllers/insertController");
-app.use(
-  cors({
-    origin: "http://localhost:3000",
-  })
-);
+const insertController = require("./controllers/lab2");
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+app.use(cors({ origin: "http://localhost:3000" }));
 app.use(bodyParser.json());
 
-// Database routes
-app.post("/database/create", databaseController.createDatabase);
-app.post("/database/drop", databaseController.dropDatabase);
+app.use("/database", databaseController);
 
-// Table routes
-app.post("/table/create", tableController.createTable);
-app.post("/table/drop", tableController.dropTable);
+app.use("/table", tableController);
 
-//Insert Delete routes
+app.use("/", insertController);
 
-app.post("/api/insert/:databaseName/:tableName", insertRecord);
-app.post("/api/delete/:databaseName/:tableName/:primaryKey", deleteRecord);
-app.get("/api/metadata/:databaseName", getMetadata);
+app.use("/index", indexController);
 
-app.post("/index/create", indexController.createIndex);
-const PORT = process.env.PORT || 5000;
+const dbURI =
+  "mongodb+srv://Farchi:Masterzabest20@mydatabase.enc6jmy.mongodb.net/?retryWrites=true&w=majority";
+connectToDatabase(dbURI); // Use the database controller to connect
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

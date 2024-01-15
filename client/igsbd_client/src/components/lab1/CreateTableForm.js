@@ -12,7 +12,9 @@ function CreateTable() {
   const [targetColumn, setTargetColumn] = useState("");
   const [primaryKeys, setPrimaryKeys] = useState([]);
   const [foreignKeys, setForeignKeys] = useState([]);
+  const [uniqueKeys, setUniqueKeys] = useState([]);
   const [tableStructure, setTableStructure] = useState([]);
+  const [isUnique, setIsUnique] = useState(false);
 
   const handleAddColumn = () => {
     if (column && columnType) {
@@ -21,6 +23,7 @@ function CreateTable() {
         type: columnType,
         isPrimaryKey,
         isForeignKey,
+        isUnique,
         targetTable: isForeignKey ? targetTable : null,
         targetColumn: isForeignKey ? targetColumn : null,
       };
@@ -28,12 +31,13 @@ function CreateTable() {
       setTableStructure([...tableStructure, newColumn]);
 
       if (isPrimaryKey) {
-        // Add the new column to the primary keys
         setPrimaryKeys([...primaryKeys, newColumn.name]);
       }
 
+      if (isUnique) {
+        setUniqueKeys([...uniqueKeys, newColumn.name]);
+      }
       if (isForeignKey) {
-        // Add the new column to the foreign keys
         setForeignKeys([
           ...foreignKeys,
           { columnName: newColumn.name, targetTable, targetColumn },
@@ -44,6 +48,7 @@ function CreateTable() {
       setColumnType("string");
       setIsPrimaryKey(false);
       setIsForeignKey(false);
+      setIsUnique(false);
       setTargetTable("");
       setTargetColumn("");
     }
@@ -63,22 +68,19 @@ function CreateTable() {
           tableStructure,
           primaryKeys,
           foreignKeys,
+          uniqueKeys,
         }),
       });
 
       if (response.ok) {
         console.log("Table created successfully");
-        // Optionally, provide user feedback here
       } else {
         console.error("Table creation failed");
-        // Handle the error and provide user feedback
       }
     } catch (error) {
       console.error("An error occurred while creating the table:", error);
-      // Handle unexpected errors here
     }
 
-    // Reset input fields
     setTableName("");
     setColumn("");
     setColumnType("string");
@@ -89,6 +91,8 @@ function CreateTable() {
     setPrimaryKeys([]);
     setForeignKeys([]);
     setTableStructure([]);
+    setUniqueKeys([]);
+    setIsUnique(false);
   };
 
   return (
@@ -129,6 +133,14 @@ function CreateTable() {
           type="checkbox"
           checked={isPrimaryKey}
           onChange={() => setIsPrimaryKey(!isPrimaryKey)}
+        />
+      </label>
+      <label>
+        Is Unique:
+        <input
+          type="checkbox"
+          checked={isUnique}
+          onChange={() => setIsUnique(!isUnique)}
         />
       </label>
       <label>

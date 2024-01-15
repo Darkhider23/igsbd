@@ -4,6 +4,8 @@ import CreateDatabasePage from "./components/lab1/CreateDatabasePage";
 import InsertDeletePage from "./components/lab2/InsertDeletePage";
 import Navbar from "./components/Navbar";
 
+import IndexList from "./components/lab3/IndexList";
+
 function App() {
   return (
   <>
@@ -12,7 +14,7 @@ function App() {
     <Routes>
       {<Route path="/" element={<CreateDatabasePage />} />}
       {<Route path="/lab2" element={<InsertDeletePage />} />}
-      {<Route path="/lab3" element={<CreateDatabasePage />} />}
+      {<Route path="/lab3" element={<IndexList />} />}
     </Routes>
     </>
   );

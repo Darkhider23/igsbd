@@ -1,43 +1,145 @@
-// server/controllers/indexController.js
+const express = require("express");
+const router = express.Router();
 
-const { table } = require('console');
-const fs = require('fs');
-const path = require('path');
+const { table } = require("console");
+const fs = require("fs");
+const path = require("path");
 
-const databaseDir = './database/';
+const databaseDir = "./database/";
 
-module.exports = {
-  createIndex: (req, res) => {
-    const { dbName, tableName, indexName, columns } = req.body;
-    console.log(dbName,tableName,indexName,columns);
-    const dbPath = path.join(databaseDir, `${dbName}.json`);
-    
-    try {
-      // Read the database JSON file
-      const database = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-      
-      // Find the table in the database
-      const table = database.tables.find((table) => table.name === tableName);
+router.post("/create", (req, res) => {
+  const { dbName, tableName, indexName, columns } = req.body;
+  const dbPath = path.join(databaseDir, `${dbName}.json`);
 
-      if (table) {
-        // Check if the table has an "indexes" property; if not, initialize it
-        if (!table.indexes) {
-          table.indexes = [];
+  try {
+    const database = JSON.parse(fs.readFileSync(dbPath, "utf8"));
+    const table = database.tables.find((table) => table.name === tableName);
+
+    if (table) {
+      if (!table.indexes) {
+        table.indexes = [];
+      }
+
+      // Check if the index with the same name already exists
+      const existingIndex = table.indexes.find(
+        (index) => index.name === indexName
+      );
+
+      if (existingIndex) {
+        return res.status(400).json({
+          error: `Index '${indexName}' already exists for the table '${tableName}'.`,
+        });
+      }
+
+      const uniqueIndex = columns.some((columnName) => {
+        const column = table.structure.find((col) => col.name === columnName);
+        return column && column.isUnique;
+      });
+
+      table.indexes.push({ name: indexName, columns });
+
+      fs.writeFileSync(dbPath, JSON.stringify(database));
+
+      // Update the metadata with the new index information
+      const metadataPath = path.join(databaseDir, `${dbName}_metadata.json`);
+      const metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8"));
+      const tableMetadata = metadata.tables.find(
+        (metaTable) => metaTable.name === tableName
+      );
+
+      if (tableMetadata) {
+        if (!tableMetadata.indexes) {
+          tableMetadata.indexes = [];
         }
 
-        // Create the index object and add it to the table's indexes
-        table.indexes.push({ name: indexName, columns });
+        // Check if the index with the same name already exists in metadata
+        const existingMetadataIndex = tableMetadata.indexes.find(
+          (index) => index.name === indexName
+        );
 
-        // Write the updated database back to the JSON file
+        if (!existingMetadataIndex) {
+          tableMetadata.indexes.push({ name: indexName, columns });
+          fs.writeFileSync(metadataPath, JSON.stringify(metadata));
+        }
+      }
+
+      const indexPath = path.join(databaseDir, `${indexName}.txt`);
+      fs.writeFileSync(indexPath, uniqueIndex.toString());
+
+      res.json({ message: "Index created successfully" });
+    } else {
+      res.status(404).json({ error: "Table not found" });
+    }
+  } catch (error) {
+    console.error("An error occurred while creating the index:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+router.post("/delete/:dbName/:tableName/:indexName", (req, res) => {
+  const { dbName, tableName, indexName } = req.params;
+  const dbPath = path.join(databaseDir, `${dbName}.json`);
+
+  try {
+    const database = JSON.parse(fs.readFileSync(dbPath, "utf8"));
+    const table = database.tables.find((table) => table.name === tableName);
+
+    if (table) {
+      if (!table.indexes) {
+        table.indexes = [];
+      }
+
+      // Find the index by name
+      const indexToDeleteIndex = table.indexes.findIndex(
+        (index) => index.name === indexName
+      );
+
+      if (indexToDeleteIndex !== -1) {
+        // Remove the index from the table's indexes array
+        table.indexes.splice(indexToDeleteIndex, 1);
+
         fs.writeFileSync(dbPath, JSON.stringify(database));
 
-        res.json({ message: 'Index created successfully' });
+        // Update the metadata to remove the index
+        const metadataPath = path.join(databaseDir, `${dbName}.json`);
+        console.log(metadataPath)
+        const metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8"));
+        const tableMetadata = metadata.tables.find(
+          (metaTable) => metaTable.name === tableName
+        );
+
+        if (tableMetadata) {
+          const metadataIndexToDeleteIndex = tableMetadata.indexes.findIndex(
+            (index) => index.name === indexName
+          );
+
+          if (metadataIndexToDeleteIndex !== -1) {
+            // Remove the index from the metadata's indexes array
+            tableMetadata.indexes.splice(metadataIndexToDeleteIndex, 1);
+            fs.writeFileSync(metadataPath, JSON.stringify(metadata));
+          }
+        }
+
+        // Delete the index file (optional)
+        const indexPath = path.join(databaseDir, `${indexName}.txt`);
+        if (fs.existsSync(indexPath)) {
+          fs.unlinkSync(indexPath);
+        }
+
+        res.json({ message: `Index '${indexName}' deleted successfully` });
       } else {
-        res.status(404).json({ error: 'Table not found' });
+        res
+          .status(404)
+          .json({
+            error: `Index '${indexName}' not found for the table '${tableName}'`,
+          });
       }
-    } catch (error) {
-      console.error('An error occurred while creating the index:', error);
-      res.status(500).json({ error: 'Internal server error' });
+    } else {
+      res.status(404).json({ error: "Table not found" });
     }
-  },
-};
+  } catch (error) {
+    console.error("An error occurred while deleting the index:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+module.exports = router;
