@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import DeleteIndexButton from "./DeleteIndex";
+import IndexEntriesDeleter from "./IndexEntriesDeleter";
 
 const IndexList = () => {
   const [indexes, setIndexes] = useState([]);
@@ -45,6 +46,8 @@ const IndexList = () => {
           </li>
         ))}
       </ul>
+
+      <IndexEntriesDeleter/>
     </div>
   );
 };

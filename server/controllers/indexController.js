@@ -26,9 +26,8 @@ router.post("/create", (req, res) => {
       );
 
       if (existingIndex) {
-        return res.status(400).json({
-          error: `Index '${indexName}' already exists for the table '${tableName}'.`,
-        });
+        console.log(`Index '${indexName}' already exists. Skipping creation.`);
+        return res.json({ message: "Index already exists" });
       }
 
       const uniqueIndex = columns.some((columnName) => {
@@ -41,7 +40,7 @@ router.post("/create", (req, res) => {
       fs.writeFileSync(dbPath, JSON.stringify(database));
 
       // Update the metadata with the new index information
-      const metadataPath = path.join(databaseDir, `${dbName}_metadata.json`);
+      const metadataPath = path.join(databaseDir, `${dbName}.json`);
       const metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8"));
       const tableMetadata = metadata.tables.find(
         (metaTable) => metaTable.name === tableName
@@ -60,11 +59,18 @@ router.post("/create", (req, res) => {
         if (!existingMetadataIndex) {
           tableMetadata.indexes.push({ name: indexName, columns });
           fs.writeFileSync(metadataPath, JSON.stringify(metadata));
+        } else {
+          console.log(
+            `Index '${indexName}' already exists in metadata. Skipping addition.`
+          );
         }
       }
 
-      const indexPath = path.join(databaseDir, `${indexName}.txt`);
-      fs.writeFileSync(indexPath, uniqueIndex.toString());
+      const indexPath = path.join(databaseDir, `${indexName}.json`);
+      fs.writeFileSync(
+        indexPath,
+        JSON.stringify({ isUnique: uniqueIndex, fields: [] })
+      );
 
       res.json({ message: "Index created successfully" });
     } else {
@@ -101,7 +107,7 @@ router.post("/delete/:dbName/:tableName/:indexName", (req, res) => {
 
         // Update the metadata to remove the index
         const metadataPath = path.join(databaseDir, `${dbName}.json`);
-        console.log(metadataPath)
+        console.log(metadataPath);
         const metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8"));
         const tableMetadata = metadata.tables.find(
           (metaTable) => metaTable.name === tableName
@@ -127,11 +133,9 @@ router.post("/delete/:dbName/:tableName/:indexName", (req, res) => {
 
         res.json({ message: `Index '${indexName}' deleted successfully` });
       } else {
-        res
-          .status(404)
-          .json({
-            error: `Index '${indexName}' not found for the table '${tableName}'`,
-          });
+        res.status(404).json({
+          error: `Index '${indexName}' not found for the table '${tableName}'`,
+        });
       }
     } else {
       res.status(404).json({ error: "Table not found" });
