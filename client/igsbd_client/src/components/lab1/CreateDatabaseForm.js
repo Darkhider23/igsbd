@@ -23,7 +23,6 @@ function CreateDatabaseForm() {
         }
       } catch (error) {
         console.error('An error occurred while creating the database:', error);
-        // Handle any unexpected errors here.
       }
 
       setDatabaseName('');

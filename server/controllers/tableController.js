@@ -8,7 +8,6 @@ router.post("/create", (req, res) => {
     dbName,
     tableName,
     tableStructure,
-    primaryKeys,
     foreignKeys,
     uniqueKeys,
   } = req.body;
@@ -16,7 +15,6 @@ router.post("/create", (req, res) => {
     dbName,
     tableName,
     tableStructure,
-    primaryKeys,
     foreignKeys,
     uniqueKeys
   );
@@ -55,7 +53,6 @@ router.post("/create", (req, res) => {
     const newTable = {
       name: tableName,
       structure: tableStructure,
-      primaryKeys,
       foreignKeys,
       uniqueKeys,
     };

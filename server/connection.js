@@ -1,18 +1,28 @@
-// databaseController.js
+const { MongoClient } = require("mongodb");
 
-const mongoose = require("mongoose");
+// Replace "your-mongodb-uri" with your MongoDB connection string
+const uri =
+  "mongodb+srv://Farchi:Masterzabest20@mydatabase.enc6jmy.mongodb.net/?retryWrites=true&w=majority";
 
-const connectToDatabase = async (dbURI) => {
+const client = new MongoClient(uri, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+
+async function connectToMongo() {
   try {
-    await mongoose.connect(dbURI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-    console.log("MongoDB connected successfully");
+    await client.connect();
+    console.log("Connected to MongoDB");
   } catch (error) {
-    console.error("MongoDB connection error:", error.message);
-    // Handle the error as needed
+    console.error("Error connecting to MongoDB:", error.message);
   }
+}
+
+const getDbClient = () => {
+  if (!client) {
+    throw new Error("Database client is not connected.");
+  }
+  return client;
 };
 
-module.exports = connectToDatabase;
+module.exports = { connectToMongo, getDbClient };

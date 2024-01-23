@@ -6,11 +6,11 @@ function CreateTable() {
   const [tableName, setTableName] = useState("");
   const [column, setColumn] = useState("");
   const [columnType, setColumnType] = useState("string");
-  const [isPrimaryKey, setIsPrimaryKey] = useState(false);
+
   const [isForeignKey, setIsForeignKey] = useState(false);
   const [targetTable, setTargetTable] = useState("");
   const [targetColumn, setTargetColumn] = useState("");
-  const [primaryKeys, setPrimaryKeys] = useState([]);
+
   const [foreignKeys, setForeignKeys] = useState([]);
   const [uniqueKeys, setUniqueKeys] = useState([]);
   const [tableStructure, setTableStructure] = useState([]);
@@ -21,7 +21,6 @@ function CreateTable() {
       const newColumn = {
         name: column,
         type: columnType,
-        isPrimaryKey,
         isForeignKey,
         isUnique,
         targetTable: isForeignKey ? targetTable : null,
@@ -29,10 +28,6 @@ function CreateTable() {
       };
 
       setTableStructure([...tableStructure, newColumn]);
-
-      if (isPrimaryKey) {
-        setPrimaryKeys([...primaryKeys, newColumn.name]);
-      }
 
       if (isUnique) {
         setUniqueKeys([...uniqueKeys, newColumn.name]);
@@ -46,7 +41,7 @@ function CreateTable() {
 
       setColumn("");
       setColumnType("string");
-      setIsPrimaryKey(false);
+
       setIsForeignKey(false);
       setIsUnique(false);
       setTargetTable("");
@@ -66,7 +61,7 @@ function CreateTable() {
           dbName: selectedDatabase,
           tableName,
           tableStructure,
-          primaryKeys,
+       
           foreignKeys,
           uniqueKeys,
         }),
@@ -84,11 +79,11 @@ function CreateTable() {
     setTableName("");
     setColumn("");
     setColumnType("string");
-    setIsPrimaryKey(false);
+
     setIsForeignKey(false);
     setTargetTable("");
     setTargetColumn("");
-    setPrimaryKeys([]);
+  
     setForeignKeys([]);
     setTableStructure([]);
     setUniqueKeys([]);
@@ -126,14 +121,6 @@ function CreateTable() {
           <option value="number">Number</option>
           {/* Add more types as needed */}
         </select>
-      </label>
-      <label>
-        Is Primary Key:
-        <input
-          type="checkbox"
-          checked={isPrimaryKey}
-          onChange={() => setIsPrimaryKey(!isPrimaryKey)}
-        />
       </label>
       <label>
         Is Unique:
@@ -177,9 +164,7 @@ function CreateTable() {
       <ul>
         {tableStructure.map((column, index) => (
           <li key={index}>
-            {`${column.name}: ${column.type} ${
-              column.isPrimaryKey ? "(Primary Key)" : ""
-            } ${
+            {`${column.name}: ${column.type}  ${
               column.isForeignKey
                 ? `(Foreign Key: ${column.targetTable}.${column.targetColumn})`
                 : ""

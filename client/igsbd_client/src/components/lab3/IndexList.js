@@ -7,6 +7,8 @@ const IndexList = () => {
   const [indexes, setIndexes] = useState([]);
   const dbName = sessionStorage.getItem("databaseName");
   const tableName = sessionStorage.getItem("tableName");
+  console.log(dbName);
+  console.log(tableName)
   
   useEffect(() => {
     const fetchIndexes = async () => {

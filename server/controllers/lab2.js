@@ -1,14 +1,14 @@
-const mongoose = require("mongoose");
+const { MongoClient } = require("mongodb");
 const express = require("express");
 const router = express.Router();
 const bodyParser = require("body-parser");
 const fs = require("fs");
-const { table } = require("console");
 const app = express();
-const port = 3000;
-const models = {};
 const path = require("path");
 const fsPromises = require("fs").promises;
+const { getDbClient } = require("../connection");
+
+const models = {};
 
 function getTableInfo(databaseName, tableName) {
   currfolder = __dirname;
@@ -34,58 +34,58 @@ function getTableInfo(databaseName, tableName) {
   }
 }
 
-const createModel = (databaseName, tableName) => {
-  const modelName = `${databaseName}_${tableName}`;
+const createModel = (database, tableName) => {
+  const modelName = `${tableName}`;
 
   // Check if the model already exists
   if (models[modelName]) {
     return models[modelName];
   }
 
-  // Define the schema with 'id' and 'values' fields
-  const schema = {
-    key: {
-      type: String,
-      required: true,
-      unique: true,
-    },
-    values: {
-      type: String,
-      required: true,
-    },
-  };
+  // Create a collection with the specified name
+  const YourModel = database.collection(modelName);
 
-  const model = {
-    YourModel: mongoose.model(modelName, new mongoose.Schema(schema)),
-  };
-
-  models[modelName] = model;
-  return model;
+  models[modelName] = YourModel; // Corrected this line to store the model
+  return YourModel;
 };
-
-app.use(bodyParser.json());
 
 router.post("/insert/:databaseName/:tableName", async (req, res) => {
   try {
     const { databaseName, tableName } = req.params;
-    const { YourModel } = createModel(databaseName, tableName);
+
+    const dbClient = getDbClient();
+    const adminDb = dbClient.db("admin");
+
+    const listDatabases = await adminDb.admin().listDatabases();
+    const databaseExists = listDatabases.databases.some(
+      (db) => db.name === databaseName
+    );
+
+    if (!databaseExists) {
+      console.log(`Creating database: ${databaseName}`);
+      const newDb = adminDb.admin().db(databaseName);
+      await newDb.createCollection("dummyCollection");
+    }
+
+    const targetDb = dbClient.db(databaseName);
+
+    const YourModel = createModel(targetDb, tableName);
 
     const record = req.body;
 
     const tableInfo = getTableInfo(databaseName, tableName);
-    const primaryKeyColumns = tableInfo.primaryKeys;
+    const recordKeys = Object.keys(record);
+    const primaryKey = recordKeys[0];
+    const primaryKeyValue = record[primaryKey];
 
-    const indexColumns = tableInfo.indexes || [];
+    // Exclude the primary key from the values
+    const values = recordKeys
+      .slice(1)
+      .map((key) => record[key])
+      .join(",");
 
-    // Create composite primary key
-    const compositePrimaryKeyValues = primaryKeyColumns.map(
-      (column) => record[column]
-    );
-    const primaryKeyIndex = compositePrimaryKeyValues.join("$");
-    // Check if the composite primary key combination already exists
-    const existingRecord = await YourModel.findOne({
-      key: compositePrimaryKeyValues,
-    });
+    // Check if the composite primary key already exists
+    const existingRecord = await YourModel.findOne({ key: primaryKeyValue });
 
     if (existingRecord) {
       console.error(
@@ -97,84 +97,68 @@ router.post("/insert/:databaseName/:tableName", async (req, res) => {
         .json({ error: "This primary key combination already exists" });
       return;
     }
-    let primaryKeyValuesRecord = { ...record };
-
-    // Extract primary key values
-    let primaryKeyValues = primaryKeyColumns.map((column) => {
-      let value = primaryKeyValuesRecord[column];
-      // Remove the primary key field from the temporary object
-      delete primaryKeyValuesRecord[column];
-      return value;
-    });
-
-    // Create values from the remaining fields in the temporary object
-    let values = Object.values(primaryKeyValuesRecord).join(",");
 
     // Create result with composite primary key
-    const result = await YourModel.create({
-      key: primaryKeyValues.join(","),
+    const result = await YourModel.insertOne({
+      key: primaryKeyValue,
       values,
     });
 
-    const currfolder = __dirname;
-    const parentfolder = path.join(currfolder, "..");
+    const indexes = await targetDb
+      .collection(tableName)
+      .listIndexes()
+      .toArray();
 
-    for (const indexColumn of indexColumns) {
-      const indexFilePath = path.join(
-        parentfolder,
-        `/database/${indexColumn.name}.json`
-      );
+    for (const index of indexes) {
+      const indexName = index.name;
+      const indexColumns = Object.keys(index.key);
 
-      const indexKey = indexColumn.columns
-        .map((column) => record[column])
+      // Create a collection for each index if it doesn't exist
+      const indexCollection = createModel(targetDb, indexName);
+
+      // Construct the key for the index collection
+      const indexKey = indexColumns
+        .map((columnName) => record[columnName])
         .join("$");
 
-      try {
-        const indexContent = fs.readFileSync(indexFilePath, "utf8");
-        const indexData = JSON.parse(indexContent);
+      // Check if the index is unique
+      const isUnique = index.unique;
 
-        const isUnique = indexData.isUniqueFile;
-        console.log(isUnique);
-        if (isUnique) {
-          // If the index is unique, check if the index key already exists
-          const existingIndex = indexData.fields.find((entry) => {
-            return entry.key === indexKey;
-          });
+      // Check if the value already exists in the index collection
+      const existingRecord = await indexCollection.findOne({ key: indexKey });
 
-          if (existingIndex) {
-            console.error(
-              "Error in insertRecord:",
-              "This unique index key combination already exists"
-            );
-            res.status(400).json({
-              error: "This unique index key combination already exists",
-            });
-            return;
-          }
-        } else {
-          // If the index is not unique, find and update the existing entry
-          const existingIndex = indexData.fields.find((entry) => {
-            return entry.key === indexKey;
-          });
-
-          if (existingIndex) {
-            // Update the existing entry with the new value
-            existingIndex.value = `${existingIndex.value}#${primaryKeyIndex}`;
-          } else {
-            // If the entry doesn't exist, add a new one
-            indexData.fields.push({ key: indexKey, value: primaryKeyIndex });
-          }
+      // Handle based on uniqueness
+      if (isUnique) {
+        if (existingRecord) {
+          console.error(
+            "Error in insertRecord:",
+            "This unique index combination already exists"
+          );
+          res
+            .status(400)
+            .json({ error: "This unique index combination already exists" });
+          return;
         }
+      } else {
+        // If it's not unique, concatenate the old value with the new one
+        if (existingRecord) {
+          const oldValue = existingRecord.value;
+          const newValue = primaryKeyValue;
+          const updatedValue = `${oldValue}$${newValue}`;
 
-        fs.writeFileSync(indexFilePath, JSON.stringify(indexData, null, 2));
-      } catch (error) {
-        // If the file doesn't exist, create it
-        const indexData = {
-          isUniqueFile: indexColumn.isUnique,
-          fields: [{ key: indexKey, value: primaryKeyIndex }],
-        };
-        fs.writeFileSync(indexFilePath, JSON.stringify(indexData, null, 2));
+          // Update the existing entry with the concatenated value
+          await indexCollection.updateOne(
+            { key: indexKey },
+            { $set: { value: updatedValue } }
+          );
+        }
       }
+
+      // // Add elements to the index collection
+      // await indexCollection.insertOne({
+      //   key: indexKey,
+      //   value: primaryKeyValue,
+      // });
     }
 
     res.json(result);
@@ -189,7 +173,9 @@ router.post(
   async (req, res) => {
     try {
       const { databaseName, tableName, primaryKey } = req.params;
-      const { YourModel } = createModel(databaseName, tableName);
+      const dbClient = getDbClient();
+      const targetDb = dbClient.db(databaseName);
+      const YourModel = createModel(targetDb, tableName);
 
       // Find the record to be deleted
       const recordToDelete = await YourModel.findOne({ key: primaryKey });
@@ -207,45 +193,8 @@ router.post(
         return res.status(404).json({ error: "Record not found" });
       }
 
-      // Check and delete the corresponding index entries
-      const currfolder = __dirname;
-      const parentfolder = path.join(currfolder, "..");
-      const tableInfo = getTableInfo(databaseName, tableName);
-      const indexColumns = tableInfo.indexes || [];
-
-      for (const indexColumn of indexColumns) {
-        const indexFilePath = path.join(
-          parentfolder,
-          `/database/${indexColumn.name}.json`
-        );
-
-        try {
-          // Read the index file
-          const indexContent = fs.readFileSync(indexFilePath, "utf8");
-          const indexData = JSON.parse(indexContent);
-
-          // Find and remove the entries with the provided primary key
-          const updatedFields = indexData.fields.filter(
-            (entry) => !entry.value.includes(primaryKey)
-          );
-
-          // Update the index file with the modified entries
-          await fsPromises.writeFile(
-            indexFilePath,
-            JSON.stringify({
-              isUnique: indexData.isUnique,
-              fields: updatedFields,
-            }),
-            "utf8"
-          );
-        } catch (error) {
-          console.error("Error deleting index entries:", error);
-          res.status(500).json({ error: "Internal Server Error" });
-        }
-      }
-
       res.json({
-        message: "Record and associated index entries deleted successfully",
+        message: "Record deleted successfully",
       });
     } catch (error) {
       console.error("Error in deleteRecord:", error);
@@ -313,4 +262,4 @@ router.post("/delete-entries/:indexName/:indexKey", async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = { router, getTableInfo };
