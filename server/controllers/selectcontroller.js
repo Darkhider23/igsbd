@@ -17,43 +17,44 @@ const createModel = (database, tableName) => {
   // Create a collection with the specified name
   const YourModel = database.collection(modelName);
 
-  models[modelName] = YourModel; // Corrected this line to store the model
+  models[modelName] = YourModel;
   return YourModel;
 };
 
 router.post("/create", async (req, res) => {
   try {
     const { dbName, tableName, conditions } = req.body;
-
-    // Use getDbClient to get the existing client or connect to the database
+    let PKValues;
     const client = await getDbClient();
     const db = client.db(dbName);
     const collection = db.collection(tableName);
 
     const tableinfo = getTableInfo(dbName, tableName);
-    // Find an index that matches all conditions
+
     for (const index of tableinfo.indexes) {
       const indexColumns = index.columns;
-
-      // Create a collection for the index
-      // const indexCollection = createModel(db, index.name);
 
       const indexCollection = db.collection(index.name);
       const documents = await indexCollection.find({}).toArray();
       const decomposedColumns = documents.map((entry) => entry._id.split("$"));
 
-      // Check conditions on the decomposed columns
       const result = decomposedColumns
         .map((decomposedValues, res) => {
           let allConditionsMet = true;
 
           const conditionsAreMet = conditions.every((condition, i) => {
             if (!allConditionsMet) {
-              return false; // Skip checking the remaining conditions if allConditionsMet is already false
+              return false;
             }
 
-            const decomposedValue = decomposedValues[i];
-            const conditionValue = condition.value;
+            let decomposedValue = decomposedValues[i];
+            let conditionValue = condition.value;
+            if (
+              getColumnType(dbName, tableName, condition.column) === "Number"
+            ) {
+              decomposedValue = parseFloat(decomposedValue);
+              conditionValue = parseFloat(conditionValue);
+            }
 
             console.log(typeof decomposedValue);
             console.log(typeof conditionValue);
@@ -72,13 +73,13 @@ router.post("/create", async (req, res) => {
                   allConditionsMet && decomposedValue < conditionValue;
                 break;
               default:
-                allConditionsMet = false; // Invalid operator, set result to false
+                allConditionsMet = false;
             }
 
-            return allConditionsMet; // Return the current result for the specific decomposedValues
+            return allConditionsMet;
           });
 
-          return { conditionsAreMet, res }; // Return an object with both the result and the index
+          return { conditionsAreMet, res };
         })
         .find((result) => result.conditionsAreMet);
 
@@ -89,33 +90,18 @@ router.post("/create", async (req, res) => {
         });
         const primaryKeyValue = primaryKeys.value;
         if (primaryKeyValue) {
-          const PKValues = primaryKeyValue.split("$");
+          PKValues = primaryKeyValue.split("$");
           console.log(PKValues);
-          // Assuming primaryKeyValues is an array of values corresponding to each part of the composite key
-          // const query = {};
-          // PKValues.forEach((value, index) => {
-          //   query[`key${index + 1}`] = value; // Replace `field${index + 1}` with the actual field name
-          // });
-
-          // const result = await collection.find({
-          //   key: { $in: ["4", "8"] },
-          // });
-          // for await (const doc of result) {
-          //   console.log(doc);
-          // }
-
-          // Send the complete document as the response
-          // return res.json(result);
         }
       }
     }
-
-    // No matching index found for conditions
-    console.error(
-      "Error in select API:",
-      "No matching index found for conditions"
-    );
-    res.status(400).json({ error: "No matching index found for conditions" });
+    if (!PKValues) {
+      console.error(
+        "Error in select API:",
+        "No matching index found for conditions"
+      );
+      res.status(400).json({ error: "No matching index found for conditions" });
+    }
   } catch (error) {
     console.error("Error in select API:", error.message);
     res.status(500).json({ error: "Internal Server Error" });
@@ -146,19 +132,21 @@ function getTableInfo(databaseName, tableName) {
   }
 }
 
-function getColumnType(database, tableName, columnName) {
-  const table = database.tables.find((table) => table.name === tableName);
+function getColumnType(databaseName, tableName, columnName) {
+  const tableInfo = getTableInfo(databaseName, tableName);
 
-  if (table) {
-    const column = table.structure.find((col) => col.name === columnName);
+  if (tableInfo) {
+    const columnInfo = tableInfo.structure.find(
+      (col) => col.name === columnName
+    );
 
-    if (column) {
-      return column.type;
+    if (columnInfo) {
+      return columnInfo.type;
     } else {
       console.log(`Column '${columnName}' not found in table '${tableName}'.`);
     }
   } else {
-    console.log(`Table '${tableName}' not found in the database.`);
+    console.log(`Table '${tableName}' not found in the metadata.`);
   }
 
   // Return null or any default value if the column or table is not found

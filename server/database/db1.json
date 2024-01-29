@@ -150,6 +150,49 @@
           "unique": false
         }
       ]
+    },
+    {
+      "name": "Number",
+      "structure": [
+        {
+          "name": "id",
+          "type": "number",
+          "isForeignKey": false,
+          "isUnique": true,
+          "targetTable": null,
+          "targetColumn": null
+        },
+        {
+          "name": "first",
+          "type": "number",
+          "isForeignKey": false,
+          "isUnique": false,
+          "targetTable": null,
+          "targetColumn": null
+        },
+        {
+          "name": "second",
+          "type": "number",
+          "isForeignKey": false,
+          "isUnique": false,
+          "targetTable": null,
+          "targetColumn": null
+        }
+      ],
+      "foreignKeys": [],
+      "uniqueKeys": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "FirstSecond",
+          "columns": [
+            "first",
+            "second"
+          ],
+          "unique": false
+        }
+      ]
     }
   ]
 }

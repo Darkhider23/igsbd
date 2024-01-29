@@ -66,7 +66,6 @@ router.post("/insert/:databaseName/:tableName", async (req, res) => {
     const primaryKey = recordKeys[0];
     const primaryKeyValue = record[primaryKey];
 
-    // Override the default _id with the specified primary key value
     const document = {
       _id: primaryKeyValue,
       values: recordKeys
@@ -75,7 +74,6 @@ router.post("/insert/:databaseName/:tableName", async (req, res) => {
         .join(","),
     };
 
-    // Check if the composite primary key already exists
     const existingRecord = await YourModel.findOne({ _id: primaryKeyValue });
 
     if (existingRecord) {
@@ -89,10 +87,8 @@ router.post("/insert/:databaseName/:tableName", async (req, res) => {
       return;
     }
 
-    // Create result with composite primary key
     const result = await YourModel.insertOne(document);
 
-    // Use metadata information for indexes
     const tableMetadata = getTableInfo(databaseName, tableName);
 
     for (const index of tableMetadata.indexes || []) {
@@ -135,7 +131,7 @@ router.post("/insert/:databaseName/:tableName", async (req, res) => {
         }
       } else {
         await indexCollection.insertOne({
-          _id: indexKey, // Use 'id' instead of 'key'
+          _id: indexKey, 
           value: primaryKeyValue,
         });
       }
