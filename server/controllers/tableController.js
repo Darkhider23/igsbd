@@ -4,20 +4,9 @@ const fs = require("fs");
 const databaseDir = "./database/";
 
 router.post("/create", (req, res) => {
-  const {
-    dbName,
-    tableName,
-    tableStructure,
-    foreignKeys,
-    uniqueKeys,
-  } = req.body;
-  console.log(
-    dbName,
-    tableName,
-    tableStructure,
-    foreignKeys,
-    uniqueKeys
-  );
+  const { dbName, tableName, tableStructure, foreignKeys, uniqueKeys } =
+    req.body;
+  console.log(dbName, tableName, tableStructure, foreignKeys, uniqueKeys);
   const dbPath = `${databaseDir}${dbName}.json`;
 
   try {
@@ -46,6 +35,17 @@ router.post("/create", (req, res) => {
           error: `Target table '${foreignKey.targetTable}' does not exist for foreign key '${foreignKey.columnName}'`,
         });
         return;
+      }
+
+      // Set the hasForeignKey attribute for the parent table
+      const parentTable = database.tables.find(
+        (table) => table.name === foreignKey.targetTable
+      );
+      if (parentTable) {
+        if (!parentTable.hasForeignKey) {
+          parentTable.hasForeignKey = [];
+        }
+        parentTable.hasForeignKey.push(tableName);
       }
     }
 
@@ -92,7 +92,16 @@ router.post("/drop", (req, res) => {
         error: "Cannot drop table with existing foreign key references",
       });
     }
-
+    for (const foreignKey of table.foreignKeys) {
+      const targetTable = database.tables.find(
+        (otherTable) => otherTable.name === foreignKey.targetTable
+      );
+      if (targetTable) {
+        targetTable.hasForeignKey = targetTable.hasForeignKey.filter(
+          (refTable) => refTable !== tableName
+        );
+      }
+    }
     // Remove the table from the database
     database.tables.splice(tableIndex, 1);
     fs.writeFileSync(dbPath, JSON.stringify(database));

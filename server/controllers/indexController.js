@@ -3,31 +3,37 @@ const router = express.Router();
 const { connectToDatabase, getDbClient } = require("../connection");
 const { getTableInfo } = require("../controllers/lab2");
 const { ListCollectionsCursor } = require("mongodb");
+const path = require("path");
+const fs = require("fs");
 
 router.post("/create", async (req, res) => {
   try {
     const { dbName, tableName, indexName, columns } = req.body;
-
-    // Use getDbClient to get the existing client or connect to the database
-    const client = await getDbClient();
-    const db = client.db(dbName);
-    const collection = db.collection(tableName);
-
     // Fetch table information
     const tableInfo = getTableInfo(dbName, tableName);
 
     const validColumns = columns.filter((col) =>
-      tableInfo.structure.some((tableCol) => tableCol.name === col && tableCol.isUnique)
+      tableInfo.structure.some(
+        (tableCol) => tableCol.name === col && tableCol.isUnique
+      )
     );
     const isAnyFieldUnique = validColumns.length > 0;
-    // Set options based on uniqueness
-    const options = {
-      name: indexName,
-      unique: isAnyFieldUnique,
+
+    // Update table information with the new index information
+    const updatedTableInfo = {
+      ...tableInfo,
+      indexes: [
+        ...(tableInfo.indexes || []), // Add existing indexes
+        {
+          name: indexName,
+          columns: columns,
+          unique: isAnyFieldUnique,
+        },
+      ],
     };
 
-    // Using MongoDB's createIndex function
-    await collection.createIndex(columns, options);
+    // Update the table information in the metadata
+    updateTableInfo(dbName, tableName, updatedTableInfo);
 
     res.status(201).json({ message: "Index created successfully" });
   } catch (error) {
@@ -37,15 +43,20 @@ router.post("/create", async (req, res) => {
 });
 router.post("/delete/:dbName/:tableName/:indexName", async (req, res) => {
   try {
-    const { dbURI, dbName, collectionName, indexName } = req.body;
+    const { dbName, tableName, indexName } = req.params;
+    // Fetch table information
+    const tableInfo = getTableInfo(dbName, tableName);
 
-    // Use getDbClient to get the existing client or connect to the database
-    const client = await getDbClient();
-    const db = client.db(dbName);
-    const collection = db.collection(collectionName);
+    // Remove the specified index information from the table's metadata
+    const updatedTableInfo = {
+      ...tableInfo,
+      indexes: (tableInfo.indexes || []).filter(
+        (index) => index.name !== indexName
+      ),
+    };
 
-    // Using MongoDB's dropIndex function
-    await collection.dropIndex(indexName);
+    // Update the table information in the metadata
+    updateTableInfo(dbName, tableName, updatedTableInfo);
 
     res.json({ message: "Index deleted successfully" });
   } catch (error) {
@@ -53,5 +64,26 @@ router.post("/delete/:dbName/:tableName/:indexName", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+function updateTableInfo(dbName, tableName, updatedTableInfo) {
+  currdir = __dirname;
+  pardir = path.join(currdir, "..");
+  dbpath = dbName + ".json";
+  filePath = path.join(pardir, "database", dbpath);
+
+  const fileData = fs.readFileSync(filePath, "utf8");
+  const metadata = JSON.parse(fileData);
+
+  // Update the specific table information
+  metadata.tables = metadata.tables.map((table) => {
+    if (table.name === tableName) {
+      return updatedTableInfo;
+    }
+    return table;
+  });
+
+  // Write the updated metadata back to the file
+  fs.writeFileSync(filePath, JSON.stringify(metadata, null, 2), "utf8");
+}
 
 module.exports = router;

@@ -1,0 +1,89 @@
+{
+  "tables": [
+    {
+      "name": "Parent",
+      "structure": [
+        {
+          "name": "id",
+          "type": "string",
+          "isForeignKey": false,
+          "isUnique": true,
+          "targetTable": null,
+          "targetColumn": null
+        },
+        {
+          "name": "Name",
+          "type": "string",
+          "isForeignKey": false,
+          "isUnique": false,
+          "targetTable": null,
+          "targetColumn": null
+        }
+      ],
+      "foreignKeys": [],
+      "uniqueKeys": [
+        "id"
+      ],
+      "hasForeignKey": [
+        "Child"
+      ]
+    },
+    {
+      "name": "Child",
+      "structure": [
+        {
+          "name": "id",
+          "type": "string",
+          "isForeignKey": false,
+          "isUnique": true,
+          "targetTable": null,
+          "targetColumn": null
+        },
+        {
+          "name": "Name",
+          "type": "string",
+          "isForeignKey": false,
+          "isUnique": false,
+          "targetTable": null,
+          "targetColumn": null
+        },
+        {
+          "name": "Age",
+          "type": "string",
+          "isForeignKey": false,
+          "isUnique": false,
+          "targetTable": null,
+          "targetColumn": null
+        },
+        {
+          "name": "ParentId",
+          "type": "string",
+          "isForeignKey": true,
+          "isUnique": false,
+          "targetTable": "Parent",
+          "targetColumn": "id"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "columnName": "ParentId",
+          "targetTable": "Parent",
+          "targetColumn": "id"
+        }
+      ],
+      "uniqueKeys": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "NameParentId",
+          "columns": [
+            "Name",
+            "ParentId"
+          ],
+          "unique": false
+        }
+      ]
+    }
+  ]
+}

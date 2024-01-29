@@ -53,19 +53,7 @@ router.post("/insert/:databaseName/:tableName", async (req, res) => {
   try {
     const { databaseName, tableName } = req.params;
 
-    const dbClient = getDbClient();
-    const adminDb = dbClient.db("admin");
-
-    const listDatabases = await adminDb.admin().listDatabases();
-    const databaseExists = listDatabases.databases.some(
-      (db) => db.name === databaseName
-    );
-
-    if (!databaseExists) {
-      console.log(`Creating database: ${databaseName}`);
-      const newDb = adminDb.admin().db(databaseName);
-      await newDb.createCollection("dummyCollection");
-    }
+    const dbClient = await getDbClient();
 
     const targetDb = dbClient.db(databaseName);
 
@@ -78,14 +66,17 @@ router.post("/insert/:databaseName/:tableName", async (req, res) => {
     const primaryKey = recordKeys[0];
     const primaryKeyValue = record[primaryKey];
 
-    // Exclude the primary key from the values
-    const values = recordKeys
-      .slice(1)
-      .map((key) => record[key])
-      .join(",");
+    // Override the default _id with the specified primary key value
+    const document = {
+      _id: primaryKeyValue,
+      values: recordKeys
+        .slice(1)
+        .map((key) => record[key])
+        .join(","),
+    };
 
     // Check if the composite primary key already exists
-    const existingRecord = await YourModel.findOne({ key: primaryKeyValue });
+    const existingRecord = await YourModel.findOne({ _id: primaryKeyValue });
 
     if (existingRecord) {
       console.error(
@@ -99,19 +90,14 @@ router.post("/insert/:databaseName/:tableName", async (req, res) => {
     }
 
     // Create result with composite primary key
-    const result = await YourModel.insertOne({
-      key: primaryKeyValue,
-      values,
-    });
+    const result = await YourModel.insertOne(document);
 
-    const indexes = await targetDb
-      .collection(tableName)
-      .listIndexes()
-      .toArray();
+    // Use metadata information for indexes
+    const tableMetadata = getTableInfo(databaseName, tableName);
 
-    for (const index of indexes) {
+    for (const index of tableMetadata.indexes || []) {
       const indexName = index.name;
-      const indexColumns = Object.keys(index.key);
+      const indexColumns = index.columns;
 
       // Create a collection for each index if it doesn't exist
       const indexCollection = createModel(targetDb, indexName);
@@ -125,40 +111,34 @@ router.post("/insert/:databaseName/:tableName", async (req, res) => {
       const isUnique = index.unique;
 
       // Check if the value already exists in the index collection
-      const existingRecord = await indexCollection.findOne({ key: indexKey });
+      const existingRecord = await indexCollection.findOne({ _id: indexKey }); // Use 'id' instead of 'key'
 
       // Handle based on uniqueness
-      if (isUnique) {
-        if (existingRecord) {
-          console.error(
+
+      if (existingRecord) {
+        if (isUnique) {
+          console.log(
             "Error in insertRecord:",
             "This unique index combination already exists"
           );
-          res
-            .status(400)
-            .json({ error: "This unique index combination already exists" });
-          return;
-        }
-      } else {
-        // If it's not unique, concatenate the old value with the new one
-        if (existingRecord) {
+        } else {
+          // If it's not unique, concatenate the old value with the new one
           const oldValue = existingRecord.value;
           const newValue = primaryKeyValue;
           const updatedValue = `${oldValue}$${newValue}`;
 
           // Update the existing entry with the concatenated value
           await indexCollection.updateOne(
-            { key: indexKey },
+            { _id: indexKey },
             { $set: { value: updatedValue } }
           );
         }
+      } else {
+        await indexCollection.insertOne({
+          _id: indexKey, // Use 'id' instead of 'key'
+          value: primaryKeyValue,
+        });
       }
-
-      // // Add elements to the index collection
-      // await indexCollection.insertOne({
-      //   key: indexKey,
-      //   value: primaryKeyValue,
-      // });
     }
 
     res.json(result);
@@ -178,7 +158,7 @@ router.post(
       const YourModel = createModel(targetDb, tableName);
 
       // Find the record to be deleted
-      const recordToDelete = await YourModel.findOne({ key: primaryKey });
+      const recordToDelete = await YourModel.findOne({ _id: primaryKey });
 
       // Check if the record exists
       if (!recordToDelete) {
@@ -186,7 +166,7 @@ router.post(
       }
 
       // Delete the record
-      const result = await YourModel.deleteOne({ key: primaryKey });
+      const result = await YourModel.deleteOne({ _id: primaryKey });
 
       // Check if the record was deleted
       if (result.deletedCount === 0) {

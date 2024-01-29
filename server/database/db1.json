@@ -1,1 +1,155 @@
-{"tables":[{"name":"Test","structure":[{"name":"id","type":"string","isForeignKey":false,"isUnique":false,"targetTable":null,"targetColumn":null},{"name":"Name","type":"string","isForeignKey":false,"isUnique":false,"targetTable":null,"targetColumn":null}],"foreignKeys":[],"uniqueKeys":[]},{"name":"Test2","structure":[{"name":"id","type":"string","isForeignKey":false,"isUnique":true,"targetTable":null,"targetColumn":null},{"name":"name","type":"string","isForeignKey":false,"isUnique":false,"targetTable":null,"targetColumn":null}],"foreignKeys":[],"uniqueKeys":["id"]},{"name":"Test3","structure":[{"name":"id","type":"string","isForeignKey":false,"isUnique":true,"targetTable":null,"targetColumn":null},{"name":"Name","type":"string","isForeignKey":false,"isUnique":false,"targetTable":null,"targetColumn":null},{"name":"Age","type":"string","isForeignKey":false,"isUnique":false,"targetTable":null,"targetColumn":null}],"foreignKeys":[],"uniqueKeys":["id"]}]}
+{
+  "tables": [
+    {
+      "name": "Student",
+      "structure": [
+        {
+          "name": "id",
+          "type": "number",
+          "isForeignKey": false,
+          "isUnique": true,
+          "targetTable": null,
+          "targetColumn": null
+        },
+        {
+          "name": "Name",
+          "type": "string",
+          "isForeignKey": false,
+          "isUnique": false,
+          "targetTable": null,
+          "targetColumn": null
+        },
+        {
+          "name": "Age",
+          "type": "number",
+          "isForeignKey": false,
+          "isUnique": false,
+          "targetTable": null,
+          "targetColumn": null
+        }
+      ],
+      "foreignKeys": [],
+      "uniqueKeys": [
+        "id"
+      ],
+      "indexes": [
+        {
+          "name": "NameAge",
+          "columns": [
+            "Name",
+            "Age"
+          ],
+          "unique": false
+        },
+        {
+          "name": "Id",
+          "columns": [
+            "id"
+          ],
+          "unique": true
+        }
+      ]
+    },
+    {
+      "name": "Course",
+      "structure": [
+        {
+          "name": "id",
+          "type": "string",
+          "isForeignKey": false,
+          "isUnique": true,
+          "targetTable": null,
+          "targetColumn": null
+        },
+        {
+          "name": "Name",
+          "type": "string",
+          "isForeignKey": false,
+          "isUnique": false,
+          "targetTable": null,
+          "targetColumn": null
+        },
+        {
+          "name": "NoStudents",
+          "type": "string",
+          "isForeignKey": false,
+          "isUnique": false,
+          "targetTable": null,
+          "targetColumn": null
+        },
+        {
+          "name": "Teacher",
+          "type": "string",
+          "isForeignKey": false,
+          "isUnique": false,
+          "targetTable": null,
+          "targetColumn": null
+        }
+      ],
+      "foreignKeys": [],
+      "uniqueKeys": [
+        "id"
+      ]
+    },
+    {
+      "name": "Test",
+      "structure": [
+        {
+          "name": "id",
+          "type": "string",
+          "isForeignKey": false,
+          "isUnique": true,
+          "targetTable": null,
+          "targetColumn": null
+        },
+        {
+          "name": "test1",
+          "type": "string",
+          "isForeignKey": false,
+          "isUnique": true,
+          "targetTable": null,
+          "targetColumn": null
+        },
+        {
+          "name": "test2",
+          "type": "string",
+          "isForeignKey": false,
+          "isUnique": false,
+          "targetTable": null,
+          "targetColumn": null
+        },
+        {
+          "name": "test3",
+          "type": "string",
+          "isForeignKey": false,
+          "isUnique": false,
+          "targetTable": null,
+          "targetColumn": null
+        }
+      ],
+      "foreignKeys": [],
+      "uniqueKeys": [
+        "id",
+        "test1"
+      ],
+      "indexes": [
+        {
+          "name": "Test1Test2",
+          "columns": [
+            "test1",
+            "test2"
+          ],
+          "unique": true
+        },
+        {
+          "name": "Test2Test3",
+          "columns": [
+            "test2",
+            "test3"
+          ],
+          "unique": false
+        }
+      ]
+    }
+  ]
+}
